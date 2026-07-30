@@ -138,6 +138,13 @@ h2.sec{font-size:17px;margin:0 0 10px;color:var(--teal-dk);font-weight:400}
 .ped-card .ahn{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)}
 .ped-card .nm{font-size:14px;color:var(--teal-dk);line-height:1.25}
 .ped-card .dt{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)}
+.ped-node{align-items:flex-start}
+.ped-sibs{display:flex;flex-direction:column;gap:3px;margin-top:5px;padding-top:5px;border-top:1px dashed var(--line)}
+.ped-sib{
+  font-size:11.5px;color:var(--muted);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  padding:2px 5px;border-radius:5px;
+}
+.ped-sib:hover{background:#E3F5F3;color:var(--teal-dk)}
 .spine{position:absolute;width:2px;background:var(--line)}
 
 /* ---------- census ---------- */
@@ -260,9 +267,10 @@ footer.foot{
       </div>
       <div style="width:150px">
         <label class="fl" for="treeGens">Generations</label>
-        <select id="treeGens"><option>3</option><option selected>4</option><option>5</option><option>6</option></select>
+        <select id="treeGens"><option>3</option><option selected>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select>
       </div>
     </div>
+    <label class="fl" style="display:flex;align-items:center;gap:7px;margin-top:9px"><input type="checkbox" id="treeSibs" style="width:auto"> Show siblings alongside each person</label>
     <div class="hint" style="margin-top:7px">Numbers are Ahnentafel: the subject is 1, each father is double their child's number, each mother that plus one. Tap any box to open the record; tap a dashed box to add that parent.</div>
   </div>
   <div class="card ped-scroll"><div class="ped-canvas" id="pedCanvas"></div></div>
@@ -331,6 +339,15 @@ footer.foot{
       <input type="file" id="fileIn" accept="*/*" style="display:none">
     </div>
     <div class="hint mono" style="margin-top:8px" id="loadNote"></div>
+  </div>
+
+  <div class="card">
+    <h2 class="sec">Import research findings</h2>
+    <div class="hint">For a small file someone has sent you — new people, a source, a log entry — that should be added to what's already here, not replace it. New people are linked to existing family by matching names. If a name repeats down the generations (six Thomas Greens is a real problem, not a hypothetical one), a birth year in brackets narrows it — "Thomas Green (1802)" — and if it still can't be settled automatically you'll get a pick-list before anything is saved wrong.</div>
+    <div class="row" style="margin-top:9px">
+      <button class="btn ghost" id="btnImportSnippet">Import a research file</button>
+      <input type="file" id="snippetIn" accept="*/*" style="display:none">
+    </div>
   </div>
 
   <div class="card">
@@ -499,6 +516,20 @@ function toast(msg){
   const t = document.getElementById("toast");
   t.textContent = msg; t.classList.add("on");
   clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove("on"), 2100);
+}
+
+function copyToClipboard(text){
+  function fallback(){
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { document.execCommand("copy"); toast("Link copied"); }
+    catch(e){ toast("Couldn't copy — long-press the link to copy it"); }
+    ta.remove();
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(() => toast("Link copied")).catch(fallback);
+  } else fallback();
 }
 
 /* ---- people helpers ---- */
@@ -720,9 +751,26 @@ function viewPerson(id){
       relRow("Siblings", sibs, "", "") +
     "</dl></div>" +
     (p.notes ? '<div class="card" style="margin-bottom:10px"><div class="hint">Notes</div><div style="white-space:pre-wrap;font-size:13.5px">' + esc(p.notes) + "</div></div>" : "") +
-    '<div class="card" style="margin-bottom:10px"><div class="hint">' +
-      srcs.length + " source" + (srcs.length === 1 ? "" : "s") + " · " + logs.length + " log entr" + (logs.length === 1 ? "y" : "ies") +
-      (srcs.length ? "<br>" + srcs.map(s => esc(s.title || s.type)).join(" · ") : "") + "</div></div>" +
+    '<div class="card" style="margin-bottom:10px">' +
+      '<div class="hint" style="margin-bottom:' + (srcs.length ? "8px" : "0") + '">Sources' + (srcs.length ? " (" + srcs.length + ")" : " — none recorded") + "</div>" +
+      srcs.map(s =>
+        '<div style="margin-bottom:7px;padding-bottom:7px;border-bottom:1px solid var(--line)">' +
+          '<div style="font-size:13.5px;color:var(--ink)">' + esc(s.title || s.type) + "</div>" +
+          '<div class="sub" style="font-family:\'DM Mono\',monospace;font-size:11.5px;color:var(--muted)">' + esc(s.type) + (s.ref ? " · " + esc(s.ref) : "") + "</div>" +
+          (s.url ?
+            '<div class="acts" style="margin-top:5px">' +
+              '<a class="btn ghost tiny" style="text-decoration:none" href="' + esc(s.url) + '" target="_blank" rel="noopener">Open link</a>' +
+              '<button class="btn ghost tiny" data-copy="' + esc(s.url) + '">Copy link</button>' +
+              '<button class="btn ghost tiny" data-editsrc="' + s.id + '">Edit</button>' +
+            "</div>" :
+            '<div class="acts" style="margin-top:5px"><button class="btn ghost tiny" data-editsrc="' + s.id + '">Edit</button></div>') +
+        "</div>"
+      ).join("") +
+    "</div>" +
+    (logs.length ? '<div class="card" style="margin-bottom:10px"><div class="hint" style="margin-bottom:8px">Research log (' + logs.length + ")</div>" +
+      logs.map(l => '<div style="margin-bottom:6px;font-size:13px"><b>' + esc(l.date || "") + "</b> — " + esc(l.where) +
+        (l.outcome === "found" ? " · found it" : l.outcome === "partial" ? " · partly" : " · nothing there") + "</div>").join("") +
+    "</div>" : "") +
     '<div class="foot">' +
       '<button class="btn ghost tiny" id="v_tree">Chart from here</button>' +
       '<button class="btn ghost" id="v_close">Close</button>' +
@@ -730,6 +778,8 @@ function viewPerson(id){
     "</div>"
   );
 
+  modal.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => copyToClipboard(b.dataset.copy));
+  modal.querySelectorAll("[data-editsrc]").forEach(b => b.onclick = () => editSource(b.dataset.editsrc));
   modal.querySelectorAll("[data-goto]").forEach(a => a.onclick = () => viewPerson(a.dataset.goto));
   modal.querySelectorAll("[data-add]").forEach(a => a.onclick = () => {
     const what = a.dataset.add;
@@ -842,16 +892,27 @@ function renderTree(){
   if(!rootId){ canvas.innerHTML = '<div class="empty">Add a person first, then chart their line from here.</div>'; document.getElementById("descList").innerHTML = ""; return; }
 
   const gens = parseInt(document.getElementById("treeGens").value, 10);
+  const showSibs = document.getElementById("treeSibs").checked;
 
   function node(id, ahn, depth, childId, role){
     const p = byId(id);
     let card;
     if(p){
       const cls = "ped-card" + (p.sex === "F" ? " female" : "") + (ahn === 1 ? " root" : "");
+      let sibsHtml = "";
+      if(showSibs){
+        const sibs = siblingsOf(p);
+        if(sibs.length){
+          sibsHtml = '<div class="ped-sibs">' + sibs
+            .sort((a,b) => (yearOf(a.birth) || 9999) - (yearOf(b.birth) || 9999))
+            .map(s => '<div class="ped-sib" data-open="' + s.id + '">' + esc(fullName(s)) + (yearOf(s.birth) ? " · " + yearOf(s.birth) : "") + "</div>")
+            .join("") + "</div>";
+        }
+      }
       card = '<div class="' + cls + '" data-open="' + p.id + '">' +
         '<div class="ahn">' + ahn + "</div>" +
         '<div class="nm">' + displayName(p) + "</div>" +
-        '<div class="dt">' + esc(lifespan(p)) + "</div></div>";
+        '<div class="dt">' + esc(lifespan(p)) + "</div>" + sibsHtml + "</div>";
     } else {
       card = '<div class="ped-card blank" data-new="' + childId + '" data-role="' + role + '">' +
         '<div class="ahn">' + ahn + "</div>" +
@@ -921,6 +982,7 @@ function renderDescendants(){
 }
 document.getElementById("treeRoot").addEventListener("change", e => { rootId = e.target.value; renderTree(); });
 document.getElementById("treeGens").addEventListener("change", renderTree);
+document.getElementById("treeSibs").addEventListener("change", renderTree);
 
 /* ============================================================
    CENSUS TAB
@@ -1046,10 +1108,12 @@ function renderSources(){
       (s.notes ? '<div class="body">' + esc(s.notes) + "</div>" : "") +
       '<div class="acts">' +
         (s.url ? '<a class="btn ghost tiny" style="text-decoration:none" href="' + esc(s.url) + '" target="_blank" rel="noopener">Open link</a>' : "") +
+        (s.url ? '<button class="btn ghost tiny" data-copy="' + esc(s.url) + '">Copy link</button>' : "") +
         '<button class="btn ghost tiny" data-edit="' + s.id + '">Edit</button>' +
       "</div></div>";
   }).join("");
   el.querySelectorAll("[data-edit]").forEach(b => b.onclick = () => editSource(b.dataset.edit));
+  el.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => copyToClipboard(b.dataset.copy));
 }
 document.getElementById("sSearch").addEventListener("input", renderSources);
 document.getElementById("btnAddSource").onclick = () => editSource(null);
@@ -1224,6 +1288,206 @@ document.getElementById("fileIn").addEventListener("change", e => {
   r.readAsText(f);
   e.target.value = "";
 });
+/* ============================================================
+   MERGE IMPORT — adds a small research snippet to the existing
+   tree instead of replacing it.
+
+   Name matching alone breaks down with repeated family names
+   (six generations of Thomas Green is a real case, not a rare
+   one), so a name can carry a birth-year hint — "Thomas Green
+   (b. 1802)" — which narrows to one person if any candidate's
+   recorded birth year matches. Anything still ambiguous after
+   that is never guessed silently: it's queued and shown as a
+   pick-list after import, defaulted to the first candidate but
+   requiring a look before it's trusted.
+   ============================================================ */
+function normName(s){ return String(s || "").trim().toLowerCase().replace(/\s+/g, " "); }
+
+function buildNameIndex(){
+  const idx = {};
+  DB.people.forEach(p => {
+    const n = normName(fullName(p));
+    if(n){ idx[n] = idx[n] || []; idx[n].push(p.id); }
+  });
+  return idx;
+}
+
+/* "Thomas Green (b. 1802)" / "Thomas Green (1802)" -> { name:"Thomas Green", year:1802 } */
+function parseNameHint(raw){
+  const s = String(raw || "").trim();
+  const m = s.match(/^(.*?)\s*\(\s*(?:b\.?\s*)?(\d{4})\s*\)\s*$/i);
+  return m ? { name: m[1].trim(), year: parseInt(m[2], 10) } : { name: s, year: null };
+}
+function candidateLabel(id){
+  const pp = byId(id); if(!pp) return "";
+  let s = fullName(pp) + " (" + lifespan(pp) + ")";
+  const f = byId(pp.fatherId), m = byId(pp.motherId);
+  if(f || m) s += " · child of " + [f, m].filter(Boolean).map(fullName).join(" & ");
+  return s;
+}
+
+function importSnippet(data){
+  const idx = buildNameIndex();
+  const unmatched = [];
+  const queue = []; /* genuinely ambiguous links, resolved after import */
+  let addedPeople = 0, addedMarriages = 0, addedSources = 0, addedLog = 0;
+
+  function resolveFor(rawName, recordType, recordId, field, index, contextLabel){
+    if(!rawName) return "";
+    const { name, year } = parseNameHint(rawName);
+    let hit = idx[normName(name)];
+    if(!hit || !hit.length){ unmatched.push(rawName); return ""; }
+    let chosen = hit[0], settled = hit.length === 1;
+    if(!settled && year != null){
+      const narrowed = hit.filter(id => yearOf(byId(id).birth) === year);
+      if(narrowed.length === 1){ chosen = narrowed[0]; settled = true; }
+      else if(narrowed.length > 1){ hit = narrowed; chosen = narrowed[0]; }
+    }
+    if(!settled){
+      queue.push({ recordType, recordId, field, index, raw: rawName, chosen,
+        candidates: hit.map(id => ({ id, label: candidateLabel(id) })) });
+    }
+    return chosen;
+  }
+
+  /* Pass 1: create new people, without resolving parents yet */
+  const newIds = {};
+  (data.people || []).forEach((raw, i) => {
+    const rec = {
+      id: uid("p"),
+      given: (raw.given || "").trim(),
+      surname: (raw.surname || "").trim(),
+      aka: (raw.aka || "").trim(),
+      sex: raw.sex === "M" || raw.sex === "F" ? raw.sex : "",
+      birth: (raw.birth || "").trim(),
+      birthPlace: (raw.birthPlace || "").trim(),
+      bapt: (raw.bapt || "").trim(),
+      death: (raw.death || "").trim(),
+      deathPlace: (raw.deathPlace || "").trim(),
+      burial: (raw.burial || "").trim(),
+      occupation: (raw.occupation || "").trim(),
+      fatherId: "",
+      motherId: "",
+      status: ["confirmed","probable","unproven"].indexOf(raw.status) > -1 ? raw.status : "unproven",
+      living: !!raw.living,
+      notes: raw.notes || "",
+      added: Date.now()
+    };
+    if(!rec.given && !rec.surname) return;
+    DB.people.push(rec);
+    newIds[i] = rec.id;
+    addedPeople++;
+    const n = normName(fullName(rec));
+    if(n){ idx[n] = idx[n] || []; idx[n].push(rec.id); }
+  });
+
+  /* Pass 2: resolve father/mother now every name in the batch exists */
+  (data.people || []).forEach((raw, i) => {
+    if(newIds[i] === undefined) return;
+    const rec = byId(newIds[i]);
+    if(raw.father) rec.fatherId = resolveFor(raw.father, "people", rec.id, "fatherId", null, "Father of " + fullName(rec));
+    if(raw.mother) rec.motherId = resolveFor(raw.mother, "people", rec.id, "motherId", null, "Mother of " + fullName(rec));
+  });
+
+  (data.marriages || []).forEach(raw => {
+    const mid = uid("m");
+    const aId = resolveFor(raw.a, "marriages", mid, "aId", null, "Marriage partner");
+    const bId = resolveFor(raw.b, "marriages", mid, "bId", null, "Marriage partner");
+    if(!aId || !bId || aId === bId) return;
+    DB.marriages.push({ id: mid, aId, bId, date: (raw.date || "").trim(), place: (raw.place || "").trim(), notes: raw.notes || "" });
+    addedMarriages++;
+  });
+
+  (data.sources || []).forEach(raw => {
+    const sid = uid("s");
+    const personIds = (raw.people || []).map((nm, i) => resolveFor(nm, "sources", sid, "personIds", i, "Source subject")).filter(Boolean);
+    DB.sources.push({
+      id: sid,
+      type: raw.type || "Other",
+      title: (raw.title || "").trim(),
+      ref: (raw.ref || "").trim(),
+      repository: (raw.repository || "").trim(),
+      url: (raw.url || "").trim(),
+      personIds, notes: raw.notes || "", added: Date.now()
+    });
+    addedSources++;
+  });
+
+  (data.log || []).forEach(raw => {
+    const lid = uid("l");
+    const personId = resolveFor(raw.personName, "log", lid, "personId", null, "Log entry subject");
+    DB.log.push({
+      id: lid,
+      date: raw.date || new Date().toISOString().slice(0,10),
+      personId,
+      where: (raw.where || "").trim(),
+      sought: (raw.sought || "").trim(),
+      outcome: ["found","partial","nothing"].indexOf(raw.outcome) > -1 ? raw.outcome : "nothing",
+      found: raw.found || "",
+      next: (raw.next || "").trim()
+    });
+    addedLog++;
+    const last = DB.log[DB.log.length - 1];
+    if(last.next && !DB.todos.some(t => t.text === last.next)) DB.todos.push({ id: uid("t"), text: last.next, done:false, added: Date.now() });
+  });
+
+  save();
+  showImportSummary({ addedPeople, addedMarriages, addedSources, addedLog, unmatched, queue });
+}
+
+function showImportSummary(r){
+  const parts = [];
+  if(r.addedPeople) parts.push(r.addedPeople + " people");
+  if(r.addedMarriages) parts.push(r.addedMarriages + " marriage" + (r.addedMarriages === 1 ? "" : "s"));
+  if(r.addedSources) parts.push(r.addedSources + " source" + (r.addedSources === 1 ? "" : "s"));
+  if(r.addedLog) parts.push(r.addedLog + " log entr" + (r.addedLog === 1 ? "y" : "ies"));
+
+  let msg = "<h2>Import complete</h2><div class=\"hint\">Added " + (parts.join(", ") || "nothing") + ".</div>";
+
+  if(r.queue.length){
+    msg += '<div class="card" style="margin-top:10px"><div class="hint" style="margin-bottom:8px"><b>' + r.queue.length +
+      " name" + (r.queue.length === 1 ? "" : "s") + " matched more than one person</b> — check each, then apply:</div>";
+    r.queue.forEach((q, i) => {
+      msg += '<div style="margin-bottom:9px"><label class="fl">' + esc(q.label) + ' — "' + esc(q.raw) + '"</label>' +
+        '<select class="qsel" data-i="' + i + '">' +
+        q.candidates.map(c => '<option value="' + c.id + '"' + (c.id === q.chosen ? " selected" : "") + ">" + esc(c.label) + "</option>").join("") +
+        '<option value="">— none of these, leave unlinked —</option></select></div>';
+    });
+    msg += '</div>';
+  }
+  if(r.unmatched.length) msg += '<div class="card" style="margin-top:10px"><div class="hint"><b>No match found, left unlinked:</b><br>' + r.unmatched.map(esc).join("<br>") + "</div></div>";
+
+  msg += '<div class="foot"><button class="btn" id="imp_ok">' + (r.queue.length ? "Apply and finish" : "Done") + '</button></div>';
+  openModal(msg);
+
+  document.getElementById("imp_ok").onclick = () => {
+    const tables = { people: DB.people, marriages: DB.marriages, sources: DB.sources, log: DB.log };
+    modal.querySelectorAll(".qsel").forEach(sel => {
+      const q = r.queue[parseInt(sel.dataset.i, 10)];
+      const rec = tables[q.recordType].find(x => x.id === q.recordId);
+      if(!rec) return;
+      if(q.field === "personIds") rec.personIds[q.index] = sel.value || "";
+      else rec[q.field] = sel.value;
+    });
+    DB.sources.forEach(s => { s.personIds = (s.personIds || []).filter(Boolean); });
+    save(); closeModal(); renderAll();
+  };
+}
+
+document.getElementById("btnImportSnippet").onclick = () => document.getElementById("snippetIn").click();
+document.getElementById("snippetIn").addEventListener("change", e => {
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    let data = null;
+    try { data = JSON.parse(String(r.result)); } catch(err){ data = null; }
+    if(!data || typeof data !== "object"){ toast("That doesn't look like a research file"); return; }
+    importSnippet(data);
+  };
+  r.readAsText(f);
+  e.target.value = "";
+});
+
 document.getElementById("btnWipe").onclick = () => {
   if(!confirm("Clear the working copy in this browser? Download first if you haven't.")) return;
   try { localStorage.removeItem(KEY); } catch(e){}
