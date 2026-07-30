@@ -1,0 +1,36 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="squircle">
+      <rect x="0" y="0" width="1024" height="1024" rx="220" ry="220"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#squircle)">
+    <rect x="0" y="0" width="1024" height="1024" fill="#BEEBE9"/>
+
+    <!-- branch: subject -> spine -> two parents (mirrors the app's own ped-branch/spine style) -->
+    <g stroke="#0E7C74" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 566 618 L 466 618" />
+      <path d="M 466 618 L 466 356" />
+      <path d="M 466 618 L 466 668" />
+      <path d="M 466 356 L 366 356" />
+      <path d="M 466 668 L 366 668" />
+    </g>
+
+    <!-- parent cards -->
+    <rect x="176" y="306" width="190" height="100" rx="20" fill="#FBFAF8" stroke="#0E7C74" stroke-width="16"/>
+    <rect x="176" y="618" width="190" height="100" rx="20" fill="#FBFAF8" stroke="#0E7C74" stroke-width="16"/>
+    <circle cx="228" cy="356" r="22" fill="#0E7C74"/>
+    <rect x="266" y="340" width="78" height="14" rx="7" fill="#0E7C74"/>
+    <rect x="266" y="366" width="56" height="11" rx="5.5" fill="#0E7C74" opacity=".55"/>
+    <circle cx="228" cy="668" r="22" fill="#0E7C74"/>
+    <rect x="266" y="652" width="78" height="14" rx="7" fill="#0E7C74"/>
+    <rect x="266" y="678" width="56" height="11" rx="5.5" fill="#0E7C74" opacity=".55"/>
+
+    <!-- subject card, emphasised -->
+    <rect x="566" y="474" width="290" height="144" rx="26" fill="#0E7C74" stroke="#075B55" stroke-width="14"/>
+    <circle cx="644" cy="546" r="32" fill="#FBFAF8"/>
+    <rect x="700" y="524" width="120" height="18" rx="9" fill="#FBFAF8"/>
+    <rect x="700" y="556" width="86" height="14" rx="7" fill="#FBFAF8" opacity=".7"/>
+  </g>
+</svg>
